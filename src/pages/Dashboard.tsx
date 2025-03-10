@@ -1,37 +1,40 @@
 
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Music, Search, Home, History, LogOut, Heart, Play, Pause, SkipBack, SkipForward, Volume2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Music, Search, Home, History, LogOut } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
-
-interface Track {
-  id: string;
-  title: string;
-  artist: string;
-  albumArt: string;
-  preview: string | null;
-}
+import { useToast } from "@/hooks/use-toast";
+import EmotionSelector, { getMoodGenre } from '@/components/EmotionSelector';
+import SearchBar from '@/components/SearchBar';
+import MusicPlayer from '@/components/MusicPlayer';
+import TrackCard from '@/components/TrackCard';
+import { Track } from '@/types/music';
+import { searchMusic, getMoodBasedRecommendations, fetchTopCharts } from '@/services/musicApi';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
+  const location = useLocation();
+  const { toast } = useToast();
+
+  const [selectedMood, setSelectedMood] = useState<string>('happy');
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(0.7);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [likedSongs, setLikedSongs] = useState<Track[]>([]);
   const [activeView, setActiveView] = useState('feed'); // 'feed', 'search', 'liked'
-  const [feedTracks, setFeedTracks] = useState<Track[]>([]);
+  const [searchResults, setSearchResults] = useState<Track[]>([]);
   
-  const audioRef = useRef(new Audio());
-  const progressBarRef = useRef<HTMLInputElement>(null);
+  // Load mood from navigation state if available
+  useEffect(() => {
+    if (location.state?.mood) {
+      setSelectedMood(location.state.mood);
+    }
+  }, [location]);
 
-  // Load liked songs from localStorage on initial render
+  // Load liked songs from localStorage
   useEffect(() => {
     const savedLikedSongs = localStorage.getItem('likedSongs');
     if (savedLikedSongs) {
@@ -42,8 +45,8 @@ const Dashboard = () => {
       }
     }
     
-    // Load feed data
-    fetchFeedData();
+    // Initial music load based on selected mood
+    loadMoodBasedMusic(selectedMood);
   }, []);
 
   // Save liked songs to localStorage when updated
@@ -51,92 +54,62 @@ const Dashboard = () => {
     localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
   }, [likedSongs]);
 
-  // Fetch feed data (trending or recommended tracks)
-  const fetchFeedData = async () => {
+  // Load music based on mood when mood changes
+  useEffect(() => {
+    if (activeView === 'feed') {
+      loadMoodBasedMusic(selectedMood);
+    }
+  }, [selectedMood]);
+
+  const loadMoodBasedMusic = async (mood: string) => {
     setLoading(true);
     setError(null);
     
     try {
-      // Using a default term to get some popular tracks for the feed
-      const url = `https://shazam.p.rapidapi.com/search?term=${encodeURIComponent('top hits')}&locale=en-US&offset=0&limit=10`;
+      const recommendations = await getMoodBasedRecommendations(mood);
+      setTracks(recommendations);
       
-      const options = {
-        method: 'GET',
-        headers: {
-          'X-RapidAPI-Key': import.meta.env.VITE_SHAZAM_API || 'YOUR_SHAZAM_API_KEY',
-          'X-RapidAPI-Host': 'shazam.p.rapidapi.com'
-        }
-      };
-      
-      const response = await fetch(url, options);
-      if (!response.ok) throw new Error('API request failed');
-      
-      const data = await response.json();
-      
-      if (data.tracks?.hits) {
-        const formattedTracks = data.tracks.hits.map((item: any) => ({
-          id: item.track.key,
-          title: item.track.title,
-          artist: item.track.subtitle,
-          albumArt: item.track.images?.coverart || 'https://via.placeholder.com/150',
-          preview: item.track.hub?.actions?.find((action: any) => action.type === 'uri')?.uri || null
-        }));
-        setFeedTracks(formattedTracks);
-      } else {
-        setFeedTracks([]);
-        setError('No feed tracks found');
-      }
+      toast({
+        title: "Mood Music Loaded",
+        description: `Found ${recommendations.length} tracks for your ${mood} mood.`,
+      });
     } catch (err) {
-      console.error('Error fetching feed data:', err);
-      setError('Failed to load feed. Please check your API key and try again.');
+      console.error('Error loading mood music:', err);
+      setError('Failed to load recommendations. Please try again.');
+      
+      toast({
+        variant: "destructive",
+        title: "Failed to Load Music",
+        description: "There was an error getting your recommendations.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Search function
-  const searchShazam = async () => {
-    if (!searchTerm.trim()) return;
-    
+  const handleSearch = async (term: string) => {
     setLoading(true);
     setError(null);
     setActiveView('search');
     
     try {
-      const url = `https://shazam.p.rapidapi.com/search?term=${encodeURIComponent(searchTerm)}&locale=en-US&offset=0&limit=5`;
+      const results = await searchMusic(term);
+      setSearchResults(results);
       
-      const options = {
-        method: 'GET',
-        headers: {
-          'X-RapidAPI-Key': import.meta.env.VITE_SHAZAM_API || 'YOUR_SHAZAM_API_KEY',
-          'X-RapidAPI-Host': 'shazam.p.rapidapi.com'
-        }
-      };
-      
-      const response = await fetch(url, options);
-      if (!response.ok) throw new Error('API request failed');
-      
-      const data = await response.json();
-      
-      if (data.tracks?.hits) {
-        const formattedTracks = data.tracks.hits.map((item: any) => ({
-          id: item.track.key,
-          title: item.track.title,
-          artist: item.track.subtitle,
-          albumArt: item.track.images?.coverart || 'https://via.placeholder.com/150',
-          preview: item.track.hub?.actions?.find((action: any) => action.type === 'uri')?.uri || null
-        }));
-        setTracks(formattedTracks);
-      } else {
-        setTracks([]);
-        setError('No tracks found');
+      if (results.length === 0) {
+        setError('No results found. Try different keywords.');
       }
     } catch (err) {
-      console.error('Error fetching from Shazam:', err);
-      setError('Failed to search tracks. Please check your API key and try again.');
+      console.error('Search error:', err);
+      setError('Search failed. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMoodSelect = (mood: string) => {
+    setSelectedMood(mood);
+    setActiveView('feed');
   };
 
   // Toggle like/unlike a song
@@ -159,7 +132,7 @@ const Dashboard = () => {
 
   // Playback controls
   const playTrack = (track: Track, trackList?: Track[]) => {
-    const list = trackList || (activeView === 'liked' ? likedSongs : activeView === 'feed' ? feedTracks : tracks);
+    const list = trackList || (activeView === 'liked' ? likedSongs : activeView === 'search' ? searchResults : tracks);
     const trackIndex = list.findIndex(t => t.id === track.id);
     
     if (track.preview) {
@@ -168,11 +141,16 @@ const Dashboard = () => {
       setIsPlaying(true);
     } else {
       setError('No preview available for this track');
+      toast({
+        variant: "destructive",
+        title: "Playback Error",
+        description: "No preview available for this track.",
+      });
     }
   };
 
   const playPreviousTrack = () => {
-    const currentList = activeView === 'liked' ? likedSongs : activeView === 'feed' ? feedTracks : tracks;
+    const currentList = activeView === 'liked' ? likedSongs : activeView === 'search' ? searchResults : tracks;
     if (currentList.length === 0 || currentTrackIndex <= 0) return;
     const newIndex = currentTrackIndex - 1;
     setCurrentTrackIndex(newIndex);
@@ -181,7 +159,7 @@ const Dashboard = () => {
   };
 
   const playNextTrack = () => {
-    const currentList = activeView === 'liked' ? likedSongs : activeView === 'feed' ? feedTracks : tracks;
+    const currentList = activeView === 'liked' ? likedSongs : activeView === 'search' ? searchResults : tracks;
     if (currentList.length === 0 || currentTrackIndex >= currentList.length - 1) return;
     const newIndex = currentTrackIndex + 1;
     setCurrentTrackIndex(newIndex);
@@ -193,173 +171,26 @@ const Dashboard = () => {
     setIsPlaying(prev => !prev);
   };
 
-  // Progress and volume controls
-  const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = (Number(e.target.value) / 100) * duration;
-    setCurrentTime(newTime);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-    }
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = Number(e.target.value) / 100;
-    setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
-  };
-
-  const formatTime = (time: number) => {
-    if (isNaN(time)) return '0:00';
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      searchShazam();
-    }
-  };
-
-  // Audio handling effects
-  useEffect(() => {
-    const audio = audioRef.current;
-    audio.volume = volume;
-
-    const handleError = (e: any) => {
-      console.error('Audio error:', e);
-      setError('Error playing audio');
-      setIsPlaying(false);
-    };
-
-    audio.addEventListener('error', handleError);
-    
-    return () => {
-      audio.pause();
-      audio.removeEventListener('error', handleError);
-    };
-  }, []);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    
-    if (currentTrack?.preview) {
-      audio.src = currentTrack.preview;
-      audio.load();
-      if (isPlaying) {
-        audio.play().catch(err => {
-          console.error('Playback error:', err);
-          setError('Failed to play track');
-          setIsPlaying(false);
-        });
-      }
-    }
-  }, [currentTrack]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (isPlaying) {
-      audio.play().catch(err => {
-        console.error('Play error:', err);
-        setError('Failed to play track');
-        setIsPlaying(false);
-      });
-    } else {
-      audio.pause();
-    }
-  }, [isPlaying]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    
-    const setAudioData = () => {
-      setDuration(audio.duration || 0);
-      setCurrentTime(audio.currentTime || 0);
-    };
-    
-    const setAudioTime = () => {
-      setCurrentTime(audio.currentTime || 0);
-      if (progressBarRef.current && duration) {
-        progressBarRef.current.value = String((audio.currentTime / duration) * 100);
-      }
-    };
-    
-    const setAudioEnd = () => {
-      setCurrentTime(0);
-      if (progressBarRef.current) {
-        progressBarRef.current.value = '0';
-      }
-      const currentList = activeView === 'liked' ? likedSongs : activeView === 'feed' ? feedTracks : tracks;
-      if (currentTrackIndex < currentList.length - 1) {
-        playNextTrack();
-      } else {
-        setIsPlaying(false);
-      }
-    };
-    
-    audio.addEventListener('loadedmetadata', setAudioData);
-    audio.addEventListener('timeupdate', setAudioTime);
-    audio.addEventListener('ended', setAudioEnd);
-    
-    return () => {
-      audio.removeEventListener('loadedmetadata', setAudioData);
-      audio.removeEventListener('timeupdate', setAudioTime);
-      audio.removeEventListener('ended', setAudioEnd);
-    };
-  }, [currentTrackIndex, tracks, likedSongs, feedTracks, activeView]);
-
   // Handle sign out
   const handleSignOut = () => {
+    toast({
+      title: "Signed Out",
+      description: "You have been successfully signed out.",
+    });
     navigate('/');
   };
 
-  // Render track list helper function
-  const renderTrackList = (trackList: Track[], listType: string) => {
-    return (
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {trackList.map((track) => (
-          <div 
-            key={track.id} 
-            className="relative overflow-hidden rounded-lg bg-black/20 text-white transition-all hover:scale-[1.02] hover:shadow-xl"
-          >
-            <div className="relative aspect-[16/9] overflow-hidden">
-              <img 
-                src={track.albumArt} 
-                alt={track.title} 
-                className="h-full w-full object-cover transition-transform hover:scale-105" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-              <button 
-                onClick={() => playTrack(track, trackList)}
-                className="absolute bottom-4 left-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white transition-transform hover:scale-110"
-              >
-                {currentTrack?.id === track.id && isPlaying ? <Pause size={24} /> : <Play size={24} />}
-              </button>
-              <button 
-                onClick={() => toggleLike(track)}
-                className="absolute right-4 top-4 rounded-full bg-black/30 p-2 backdrop-blur-sm transition-transform hover:scale-110"
-              >
-                <Heart 
-                  size={20} 
-                  className={isLiked(track.id) ? "fill-red-500 text-red-500" : "text-white"} 
-                />
-              </button>
-            </div>
-            <div className="p-4">
-              <h3 className="mb-1 font-bold tracking-tight text-white">{track.title}</h3>
-              <p className="text-sm text-white/80">{track.artist}</p>
-              {track.preview ? (
-                <span className="mt-2 inline-block text-xs text-blue-400">Preview Available</span>
-              ) : (
-                <span className="mt-2 inline-block text-xs text-white/50">No Preview</span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+  // Get current tracks list based on active view
+  const getCurrentTracks = () => {
+    switch (activeView) {
+      case 'search':
+        return searchResults;
+      case 'liked':
+        return likedSongs;
+      case 'feed':
+      default:
+        return tracks;
+    }
   };
 
   return (
@@ -392,7 +223,7 @@ const Dashboard = () => {
               className={`flex items-center gap-2 px-2 py-1 ${activeView === 'liked' ? 'text-blue-500' : 'text-white/80 hover:text-white'}`}
             >
               <History size={18} />
-              <span>History</span>
+              <span>Liked</span>
             </button>
           </div>
           
@@ -428,35 +259,22 @@ const Dashboard = () => {
                 className={`flex flex-col items-center p-2 ${activeView === 'liked' ? 'text-blue-500' : 'text-white/70'}`}
               >
                 <History size={20} />
-                <span className="mt-1 text-xs">History</span>
+                <span className="mt-1 text-xs">Liked</span>
               </button>
             </div>
           </aside>
           
           {/* Main content */}
-          <main className="flex-1 overflow-y-auto pb-16 md:pb-24">
+          <main className="flex-1 overflow-y-auto pb-24">
             {/* Search Bar */}
-            <div className="sticky top-0 z-10 border-b border-white/10 bg-black/30 p-4 backdrop-blur-lg">
-              <div className="mx-auto flex max-w-3xl items-center rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 backdrop-blur-sm">
-                <Search className="mr-3 h-5 w-5 text-white/50" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Search for songs, artists or albums..."
-                  className="flex-1 bg-transparent text-white placeholder-white/50 outline-none"
-                />
-                <button 
-                  onClick={searchShazam}
-                  className="ml-2 rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                >
-                  Search
-                </button>
-              </div>
-            </div>
+            <SearchBar onSearch={handleSearch} loading={loading} />
             
             <div className="container mx-auto max-w-7xl p-6">
+              {/* Mood Selector (only on feed view) */}
+              {activeView === 'feed' && (
+                <EmotionSelector selectedMood={selectedMood} onMoodSelect={handleMoodSelect} />
+              )}
+              
               {loading && (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-t-2 border-blue-500"></div>
@@ -471,159 +289,97 @@ const Dashboard = () => {
                 </div>
               )}
               
-              {/* Feed View */}
-              {activeView === 'feed' && !loading && (
-                <>
-                  <div className="mb-8">
-                    <h1 className="text-4xl font-bold">Music for your mood</h1>
-                    <p className="mt-2 text-white/70">Discover great music from our collection.</p>
-                  </div>
-                  
-                  {feedTracks.length > 0 ? (
-                    <div className="mb-10">
-                      <div className="mb-6">
-                        <h2 className="text-2xl font-bold">Your Daily Mix</h2>
-                        <p className="text-white/60">Suggested tracks based on your listening habits</p>
-                      </div>
-                      
-                      {renderTrackList(feedTracks, 'feed')}
-                    </div>
-                  ) : !error && (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <Music className="h-16 w-16 text-white/30" />
-                      <h3 className="mt-6 text-xl font-semibold">Ready to discover music?</h3>
-                      <p className="mt-2 max-w-md text-white/60">We'll suggest some great tracks for you.</p>
-                    </div>
-                  )}
-                </>
-              )}
+              {/* Current View Title and Description */}
+              <div className="mb-8">
+                {activeView === 'feed' && (
+                  <>
+                    <h1 className="text-4xl font-bold capitalize">
+                      {selectedMood === 'discovery' ? 'Discover New Music' : `${selectedMood} Music`}
+                    </h1>
+                    <p className="mt-2 text-white/70">
+                      {selectedMood === 'discovery' 
+                        ? 'Discover great new tracks curated just for you.' 
+                        : `Music that matches your ${selectedMood} mood.`}
+                    </p>
+                  </>
+                )}
+                
+                {activeView === 'search' && (
+                  <>
+                    <h1 className="text-4xl font-bold">Search Results</h1>
+                    <p className="mt-2 text-white/70">
+                      {searchResults.length > 0 
+                        ? `Found ${searchResults.length} tracks for your search.` 
+                        : 'Search for your favorite songs, artists or albums.'}
+                    </p>
+                  </>
+                )}
+                
+                {activeView === 'liked' && (
+                  <>
+                    <h1 className="text-4xl font-bold">Your Liked Tracks</h1>
+                    <p className="mt-2 text-white/70">
+                      {likedSongs.length > 0 
+                        ? `You have ${likedSongs.length} liked tracks.` 
+                        : 'Start adding tracks to your liked collection.'}
+                    </p>
+                  </>
+                )}
+              </div>
               
-              {/* Search Results View */}
-              {activeView === 'search' && !loading && (
-                <div className="mb-10">
-                  {tracks.length > 0 ? (
-                    <>
-                      <div className="mb-6">
-                        <h2 className="text-2xl font-bold">Search Results</h2>
-                        <p className="text-white/60">Results for "{searchTerm}"</p>
-                      </div>
-                      
-                      {renderTrackList(tracks, 'search')}
-                    </>
-                  ) : !error && (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <Search className="h-16 w-16 text-white/30" />
-                      <h3 className="mt-6 text-xl font-semibold">Ready to search music?</h3>
-                      <p className="mt-2 max-w-md text-white/60">Search for your favorite songs, artists, or albums to start listening</p>
-                    </div>
-                  )}
+              {/* Track Grid */}
+              {!loading && !error && getCurrentTracks().length > 0 && (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {getCurrentTracks().map((track) => (
+                    <TrackCard
+                      key={track.id}
+                      track={track}
+                      isPlaying={isPlaying}
+                      isCurrentTrack={currentTrack?.id === track.id}
+                      onPlay={() => playTrack(track)}
+                      onToggleLike={() => toggleLike(track)}
+                      isLiked={isLiked(track.id)}
+                    />
+                  ))}
                 </div>
               )}
               
-              {/* Liked Songs View */}
-              {activeView === 'liked' && !loading && (
-                <div className="mb-10">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold">Listening History</h2>
-                    <p className="text-white/60">{likedSongs.length} liked songs</p>
-                  </div>
-                  
-                  {likedSongs.length > 0 ? (
-                    renderTrackList(likedSongs, 'liked')
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <Heart className="h-16 w-16 text-white/30" />
-                      <h3 className="mt-6 text-xl font-semibold">No liked songs yet</h3>
-                      <p className="mt-2 max-w-md text-white/60">Start liking songs to add them to your collection</p>
-                    </div>
-                  )}
+              {/* Empty State */}
+              {!loading && !error && getCurrentTracks().length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Music className="h-16 w-16 text-white/30" />
+                  <h3 className="mt-6 text-xl font-semibold">
+                    {activeView === 'liked' 
+                      ? 'No liked tracks yet' 
+                      : activeView === 'search' 
+                        ? 'No search results found' 
+                        : 'No tracks available'}
+                  </h3>
+                  <p className="mt-2 max-w-md text-white/60">
+                    {activeView === 'liked' 
+                      ? 'Start liking songs to add them to your collection.' 
+                      : activeView === 'search' 
+                        ? 'Try searching for different keywords.' 
+                        : 'Try selecting a different mood.'}
+                  </p>
                 </div>
               )}
             </div>
           </main>
         </div>
         
-        {/* Player Controls - Fixed at the bottom */}
+        {/* Music Player - Fixed at the bottom */}
         {currentTrack && (
-          <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-black/80 px-4 py-3 backdrop-blur-md md:bottom-0 md:py-4">
-            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <img 
-                  src={currentTrack.albumArt} 
-                  alt={currentTrack.title} 
-                  className="h-12 w-12 rounded-md object-cover" 
-                />
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-medium">{currentTrack.title}</h3>
-                  <p className="truncate text-xs text-white/70">{currentTrack.artist}</p>
-                </div>
-                <button 
-                  onClick={() => toggleLike(currentTrack)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10"
-                >
-                  <Heart 
-                    size={18} 
-                    className={isLiked(currentTrack.id) ? "fill-red-500 text-red-500" : "text-white/70"} 
-                  />
-                </button>
-              </div>
-              
-              <div className="flex flex-1 flex-col md:mx-6">
-                <div className="mb-1 flex items-center justify-center gap-4">
-                  <button 
-                    className="rounded-full p-1 text-white/70 hover:text-white disabled:opacity-50"
-                    onClick={playPreviousTrack}
-                    disabled={currentTrackIndex <= 0}
-                  >
-                    <SkipBack size={20} />
-                  </button>
-                  
-                  <button 
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black hover:bg-white/90"
-                    onClick={togglePlayPause}
-                  >
-                    {isPlaying ? <Pause size={20} /> : <Play size={20} />}
-                  </button>
-                  
-                  <button 
-                    className="rounded-full p-1 text-white/70 hover:text-white disabled:opacity-50"
-                    onClick={playNextTrack}
-                    disabled={currentTrackIndex >= (activeView === 'liked' ? likedSongs.length - 1 : activeView === 'feed' ? feedTracks.length - 1 : tracks.length - 1)}
-                  >
-                    <SkipForward size={20} />
-                  </button>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="min-w-[40px] text-xs text-white/70">{formatTime(currentTime)}</span>
-                  <div className="relative flex-1">
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={(duration ? (currentTime / duration) * 100 : 0)}
-                      onChange={handleProgressChange}
-                      ref={progressBarRef}
-                      className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/20 accent-blue-500"
-                    />
-                  </div>
-                  <span className="min-w-[40px] text-xs text-white/70">{formatTime(duration)}</span>
-                </div>
-              </div>
-              
-              <div className="hidden items-center gap-2 md:flex">
-                <Volume2 size={18} className="text-white/70" />
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  value={volume * 100}
-                  onChange={handleVolumeChange}
-                  className="h-1.5 w-24 cursor-pointer appearance-none rounded-full bg-white/20 accent-blue-500" 
-                />
-              </div>
-            </div>
-          </div>
+          <MusicPlayer
+            currentTrack={currentTrack}
+            tracks={getCurrentTracks()}
+            isPlaying={isPlaying}
+            onTogglePlay={togglePlayPause}
+            onPrevious={playPreviousTrack}
+            onNext={playNextTrack}
+            onToggleLike={toggleLike}
+            isLiked={isLiked}
+          />
         )}
         
         {/* Footer - Only shows when not playing music */}
