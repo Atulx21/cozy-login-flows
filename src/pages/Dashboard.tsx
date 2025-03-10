@@ -210,12 +210,16 @@ const Dashboard = () => {
 
   // Handle sign out
   const handleSignOut = () => {
+    localStorage.removeItem('token'); // Remove token from local storage
+  
     toast({
       title: "Signed Out",
       description: "You have been successfully signed out.",
     });
+  
     navigate('/');
   };
+  
 
   // Get current tracks list based on active view
   const getCurrentTracks = () => {
