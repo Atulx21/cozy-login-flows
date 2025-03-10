@@ -6,7 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 interface InputFieldProps {
   id: string;
   label: string;
-  type?: "text" | "email" | "password" | "number";
+  type?: "text" | "email" | "password" | "tel";
   placeholder?: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -14,6 +14,7 @@ interface InputFieldProps {
   className?: string;
   required?: boolean;
   autoComplete?: string;
+  icon?: React.ReactNode;
 }
 
 const InputField = ({
@@ -27,6 +28,7 @@ const InputField = ({
   className,
   required = false,
   autoComplete,
+  icon,
 }: InputFieldProps) => {
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -44,9 +46,9 @@ const InputField = ({
     <div className={cn("space-y-2", className)}>
       <div
         className={cn(
-          "relative rounded-lg transition-all duration-300 border",
-          focused ? "border-primary shadow-sm" : "border-input",
-          error && hasInteracted ? "border-destructive/70" : ""
+          "relative rounded-xl transition-all duration-300 border bg-white shadow-sm",
+          focused ? "border-primary shadow-md" : "border-transparent",
+          error && hasInteracted ? "border-destructive" : ""
         )}
       >
         <label
@@ -54,8 +56,8 @@ const InputField = ({
           className={cn(
             "absolute transition-all duration-200 px-2 pointer-events-none",
             (focused || value) 
-              ? "-top-2 left-3 text-xs bg-background px-1"
-              : "left-3 top-3 text-sm text-muted-foreground",
+              ? "-top-2 left-3 text-xs bg-white px-1"
+              : "left-10 top-3.5 text-sm text-muted-foreground",
             focused ? "text-primary" : "",
             error && hasInteracted ? "text-destructive" : ""
           )}
@@ -65,6 +67,12 @@ const InputField = ({
         </label>
         
         <div className="relative">
+          {icon && (
+            <div className="absolute left-3 top-1/2 -translate-y-1/2">
+              {icon}
+            </div>
+          )}
+          
           <input
             id={id}
             type={inputType}
@@ -74,8 +82,9 @@ const InputField = ({
             onBlur={handleBlur}
             placeholder={focused ? placeholder : ""}
             className={cn(
-              "w-full bg-transparent px-4 py-3 text-foreground outline-none rounded-lg",
-              "placeholder:text-muted-foreground/70"
+              "w-full bg-transparent px-4 py-3 text-foreground outline-none rounded-xl",
+              "placeholder:text-muted-foreground/70",
+              icon && "pl-10"
             )}
             autoComplete={autoComplete}
           />
