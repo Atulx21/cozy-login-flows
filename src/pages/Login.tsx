@@ -1,151 +1,126 @@
 
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Music } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { Music, Mail, Lock } from "lucide-react";
-import InputField from "@/components/InputField";
-import Button from "@/components/Button";
-import PageTransition from "@/components/PageTransition";
+import PageTransition from '@/components/PageTransition';
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({
-    email: "",
-    password: "",
-  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
-    let valid = true;
-    const newErrors = { email: "", password: "" };
-
-    if (!email) {
-      newErrors.email = "Email is required";
-      valid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Email address is invalid";
-      valid = false;
-    }
-
-    if (!password) {
-      newErrors.password = "Password is required";
-      valid = false;
-    }
-
-    setErrors(newErrors);
-    return valid;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
-    if (!validateForm()) return;
-    
-    setIsLoading(true);
-    
-    // Simulate login
+    // Simulate login process
     setTimeout(() => {
-      setIsLoading(false);
-      
-      if (email === "demo@example.com" && password === "password") {
-        toast({
-          title: "Welcome back!",
-          description: "Successfully logged in.",
-        });
-        navigate("/dashboard", { state: { mood: "happy" } });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Login failed",
-          description: "For demo, use demo@example.com / password",
-        });
-      }
+      toast({
+        title: "Login Successful",
+        description: "Welcome back to MoodTunes!",
+      });
+      navigate('/dashboard');
+      setLoading(false);
     }, 1500);
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-purple-400 via-pink-400 to-orange-300 p-4">
-      <PageTransition>
-        <div className="glass rounded-2xl p-8 shadow-elegant max-w-md w-full">
-          <div className="mb-8 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm mb-6">
-              <Music className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-            <p className="mt-2 text-gray-600">Sign in to continue to MoodTunes</p>
+    <PageTransition>
+      <div className="flex min-h-screen flex-col bg-[#0f0f19] text-white">
+        <header className="flex items-center justify-between border-b border-white/10 bg-black/20 px-6 py-4 backdrop-blur-md">
+          <Link to="/" className="flex items-center gap-2">
+            <Music className="h-7 w-7 text-blue-500" />
+            <h1 className="text-xl font-bold">MoodTunes</h1>
+          </Link>
+        </header>
+        
+        <main className="relative flex flex-1 items-center justify-center p-6">
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-[40%] left-[20%] h-[500px] w-[500px] rounded-full bg-blue-500/20 blur-3xl"></div>
+            <div className="absolute -bottom-[30%] right-[10%] h-[600px] w-[600px] rounded-full bg-purple-500/20 blur-3xl"></div>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <InputField
-              id="email"
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              error={errors.email}
-              placeholder="Enter your email"
-              required
-              autoComplete="email"
-              icon={<Mail size={18} className="text-gray-400" />}
-            />
-
-            <InputField
-              id="password"
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              error={errors.password}
-              placeholder="Enter your password"
-              required
-              autoComplete="current-password"
-              icon={<Lock size={18} className="text-gray-400" />}
-            />
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                  Remember me
-                </label>
+          
+          <div className="relative w-full max-w-md">
+            <div className="rounded-xl border border-white/10 bg-black/30 p-8 backdrop-blur-md">
+              <div className="mb-6 flex items-center justify-center">
+                <Music className="h-10 w-10 text-blue-500" />
               </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                  Forgot password?
-                </a>
+              
+              <h2 className="mb-2 text-center text-2xl font-bold">Welcome back</h2>
+              <p className="mb-6 text-center text-white/60">Enter your details to access your account</p>
+              
+              <form onSubmit={handleLogin}>
+                <div className="mb-4">
+                  <label htmlFor="email" className="mb-2 block text-sm font-medium">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-white/50 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="your@email.com"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <label htmlFor="password" className="mb-2 block text-sm font-medium">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-white/50 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="••••••••"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-blue-800"
+                >
+                  {loading ? 'Signing in...' : 'Sign in'}
+                </button>
+              </form>
+              
+              <div className="mt-6 text-center">
+                <p className="text-white/60">
+                  Don't have an account?{' '}
+                  <Link to="/signup" className="text-blue-400 hover:text-blue-300">
+                    Sign up
+                  </Link>
+                </p>
               </div>
             </div>
-
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              fullWidth
-              loading={isLoading}
-              className="mt-6"
-            >
-              Sign In
-            </Button>
-          </form>
-
-          <div className="mt-8 text-center text-sm text-gray-600">
-            Don't have an account?{" "}
-            <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-500">
-              Sign up
-            </Link>
           </div>
-        </div>
-      </PageTransition>
-    </div>
+        </main>
+        
+        <footer className="border-t border-white/10 bg-black/20 px-6 py-4 text-center text-sm text-white/60 backdrop-blur-md">
+          © 2023 MoodTunes. All rights reserved.
+        </footer>
+      </div>
+    </PageTransition>
   );
 };
 

@@ -2,76 +2,69 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Smile, Frown, Music, Zap, Heart, Sun, Cloud, Moon } from 'lucide-react';
-
-interface Mood {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  color: string;
-  genre: string;
-}
+import { MoodCategory } from '@/types/music';
 
 interface EmotionSelectorProps {
-  selectedMood: string;
-  onMoodSelect: (mood: string) => void;
+  selectedMood: MoodCategory;
+  onMoodSelect: (mood: MoodCategory) => void;
 }
 
-const moods: Mood[] = [
+const moods = [
   {
     id: 'happy',
     name: 'Happy',
     icon: <Smile className="h-8 w-8" />,
     color: 'bg-yellow-500',
-    genre: 'pop'
+    description: 'Feeling joyful, content, or pleased'
   },
   {
     id: 'sad',
     name: 'Sad',
     icon: <Frown className="h-8 w-8" />,
     color: 'bg-blue-500',
-    genre: 'blues'
+    description: 'Feeling down, blue, or unhappy'
   },
   {
     id: 'energetic',
     name: 'Energetic',
     icon: <Zap className="h-8 w-8" />,
     color: 'bg-red-500',
-    genre: 'rock'
+    description: 'Feeling excited, motivated, or dynamic'
   },
   {
     id: 'romantic',
     name: 'Romantic',
     icon: <Heart className="h-8 w-8" />,
     color: 'bg-pink-500',
-    genre: 'r&b'
+    description: 'Feeling loving, tender, or passionate'
   },
   {
     id: 'calm',
     name: 'Calm',
     icon: <Sun className="h-8 w-8" />,
     color: 'bg-green-500',
-    genre: 'ambient'
+    description: 'Feeling relaxed, peaceful, or tranquil'
   },
   {
     id: 'melancholy',
     name: 'Melancholy',
     icon: <Cloud className="h-8 w-8" />,
     color: 'bg-purple-500',
-    genre: 'indie'
+    description: 'Feeling wistful, nostalgic, or reflective'
   },
   {
     id: 'night',
     name: 'Night',
     icon: <Moon className="h-8 w-8" />,
     color: 'bg-indigo-500',
-    genre: 'electronic'
+    description: 'Feeling mysterious, atmospheric, or deep'
   },
   {
     id: 'discovery',
     name: 'Discover',
     icon: <Music className="h-8 w-8" />,
     color: 'bg-gray-500',
-    genre: 'top hits'
+    description: 'Discover new music across all emotions'
   }
 ];
 
@@ -85,7 +78,7 @@ const EmotionSelector: React.FC<EmotionSelectorProps> = ({ selectedMood, onMoodS
             key={mood.id}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onMoodSelect(mood.id)}
+            onClick={() => onMoodSelect(mood.id as MoodCategory)}
             className={`flex flex-col items-center justify-center rounded-xl p-4 transition-colors ${
               selectedMood === mood.id
                 ? `${mood.color} text-white ring-4 ring-white/30`
@@ -94,6 +87,7 @@ const EmotionSelector: React.FC<EmotionSelectorProps> = ({ selectedMood, onMoodS
           >
             <div className="mb-2">{mood.icon}</div>
             <span className="text-sm font-medium">{mood.name}</span>
+            <p className="mt-1 text-xs opacity-80">{mood.description}</p>
           </motion.button>
         ))}
       </div>
@@ -102,8 +96,17 @@ const EmotionSelector: React.FC<EmotionSelectorProps> = ({ selectedMood, onMoodS
 };
 
 export const getMoodGenre = (moodId: string): string => {
-  const mood = moods.find(m => m.id === moodId);
-  return mood ? mood.genre : 'top hits';
+  const mapping: Record<string, string> = {
+    happy: 'pop',
+    sad: 'blues',
+    energetic: 'rock',
+    romantic: 'r&b',
+    calm: 'ambient',
+    melancholy: 'indie',
+    night: 'electronic',
+    discovery: 'top hits'
+  };
+  return mapping[moodId] || 'top hits';
 };
 
 export default EmotionSelector;

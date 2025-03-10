@@ -8,7 +8,8 @@ import EmotionSelector, { getMoodGenre } from '@/components/EmotionSelector';
 import SearchBar from '@/components/SearchBar';
 import MusicPlayer from '@/components/MusicPlayer';
 import TrackCard from '@/components/TrackCard';
-import { Track } from '@/types/music';
+import MoodHistoryItem from '@/components/MoodHistoryItem';
+import { Track, MoodCategory, MoodHistory } from '@/types/music';
 import { searchMusic, getMoodBasedRecommendations, fetchTopCharts } from '@/services/musicApi';
 
 const Dashboard = () => {
@@ -16,7 +17,7 @@ const Dashboard = () => {
   const location = useLocation();
   const { toast } = useToast();
 
-  const [selectedMood, setSelectedMood] = useState<string>('happy');
+  const [selectedMood, setSelectedMood] = useState<MoodCategory>('happy');
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
@@ -24,8 +25,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [likedSongs, setLikedSongs] = useState<Track[]>([]);
-  const [activeView, setActiveView] = useState('feed'); // 'feed', 'search', 'liked'
+  const [activeView, setActiveView] = useState('feed'); // 'feed', 'search', 'liked', 'history'
   const [searchResults, setSearchResults] = useState<Track[]>([]);
+  const [moodHistory, setMoodHistory] = useState<MoodHistory[]>([]);
   
   // Load mood from navigation state if available
   useEffect(() => {
@@ -34,7 +36,7 @@ const Dashboard = () => {
     }
   }, [location]);
 
-  // Load liked songs from localStorage
+  // Load liked songs and history from localStorage
   useEffect(() => {
     const savedLikedSongs = localStorage.getItem('likedSongs');
     if (savedLikedSongs) {
@@ -42,6 +44,15 @@ const Dashboard = () => {
         setLikedSongs(JSON.parse(savedLikedSongs));
       } catch (err) {
         console.error('Error loading liked songs:', err);
+      }
+    }
+    
+    const savedHistory = localStorage.getItem('moodHistory');
+    if (savedHistory) {
+      try {
+        setMoodHistory(JSON.parse(savedHistory));
+      } catch (err) {
+        console.error('Error loading mood history:', err);
       }
     }
     
@@ -54,6 +65,11 @@ const Dashboard = () => {
     localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
   }, [likedSongs]);
 
+  // Save mood history to localStorage when updated
+  useEffect(() => {
+    localStorage.setItem('moodHistory', JSON.stringify(moodHistory));
+  }, [moodHistory]);
+
   // Load music based on mood when mood changes
   useEffect(() => {
     if (activeView === 'feed') {
@@ -61,13 +77,25 @@ const Dashboard = () => {
     }
   }, [selectedMood]);
 
-  const loadMoodBasedMusic = async (mood: string) => {
+  const loadMoodBasedMusic = async (mood: MoodCategory) => {
     setLoading(true);
     setError(null);
     
     try {
       const recommendations = await getMoodBasedRecommendations(mood);
       setTracks(recommendations);
+      
+      // Add this mood selection to history
+      const now = new Date();
+      const newHistoryItem: MoodHistory = {
+        id: now.getTime().toString(),
+        mood: mood,
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        tracks: recommendations
+      };
+      
+      setMoodHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]);
       
       toast({
         title: "Mood Music Loaded",
@@ -107,7 +135,7 @@ const Dashboard = () => {
     }
   };
 
-  const handleMoodSelect = (mood: string) => {
+  const handleMoodSelect = (mood: MoodCategory) => {
     setSelectedMood(mood);
     setActiveView('feed');
   };
@@ -128,6 +156,15 @@ const Dashboard = () => {
   // Check if a song is liked
   const isLiked = (trackId: string) => {
     return likedSongs.some(song => song.id === trackId);
+  };
+
+  // Clear history
+  const clearHistory = () => {
+    setMoodHistory([]);
+    toast({
+      title: "History Cleared",
+      description: "Your mood history has been cleared.",
+    });
   };
 
   // Playback controls
@@ -219,11 +256,11 @@ const Dashboard = () => {
               <span>Explore</span>
             </button>
             <button 
-              onClick={() => setActiveView('liked')}
-              className={`flex items-center gap-2 px-2 py-1 ${activeView === 'liked' ? 'text-blue-500' : 'text-white/80 hover:text-white'}`}
+              onClick={() => setActiveView('history')}
+              className={`flex items-center gap-2 px-2 py-1 ${activeView === 'history' ? 'text-blue-500' : 'text-white/80 hover:text-white'}`}
             >
               <History size={18} />
-              <span>Liked</span>
+              <span>History</span>
             </button>
           </div>
           
@@ -255,11 +292,11 @@ const Dashboard = () => {
                 <span className="mt-1 text-xs">Explore</span>
               </button>
               <button 
-                onClick={() => setActiveView('liked')}
-                className={`flex flex-col items-center p-2 ${activeView === 'liked' ? 'text-blue-500' : 'text-white/70'}`}
+                onClick={() => setActiveView('history')}
+                className={`flex flex-col items-center p-2 ${activeView === 'history' ? 'text-blue-500' : 'text-white/70'}`}
               >
                 <History size={20} />
-                <span className="mt-1 text-xs">Liked</span>
+                <span className="mt-1 text-xs">History</span>
               </button>
             </div>
           </aside>
@@ -325,10 +362,62 @@ const Dashboard = () => {
                     </p>
                   </>
                 )}
+
+                {activeView === 'history' && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className="text-4xl font-bold">Your Dashboard</h1>
+                      <p className="mt-2 text-white/70">
+                        Track your mood and music recommendation history.
+                      </p>
+                    </div>
+                    {moodHistory.length > 0 && (
+                      <button 
+                        onClick={clearHistory}
+                        className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium hover:bg-white/20"
+                      >
+                        Clear history
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               
+              {/* History View */}
+              {activeView === 'history' && (
+                <div className="space-y-6">
+                  {moodHistory.length > 0 ? (
+                    moodHistory.map(historyItem => (
+                      <MoodHistoryItem
+                        key={historyItem.id}
+                        historyItem={historyItem}
+                        isPlaying={isPlaying}
+                        currentTrackId={currentTrack?.id || null}
+                        onPlay={(trackId) => {
+                          const track = historyItem.tracks.find(t => t.id === trackId);
+                          if (track) playTrack(track, historyItem.tracks);
+                        }}
+                        onToggleLike={(trackId) => {
+                          const track = historyItem.tracks.find(t => t.id === trackId);
+                          if (track) toggleLike(track);
+                        }}
+                        isLiked={isLiked}
+                      />
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <History className="h-16 w-16 text-white/30" />
+                      <h3 className="mt-6 text-xl font-semibold">No history yet</h3>
+                      <p className="mt-2 max-w-md text-white/60">
+                        Your mood selections and music recommendations will appear here.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {/* Track Grid */}
-              {!loading && !error && getCurrentTracks().length > 0 && (
+              {!loading && !error && getCurrentTracks().length > 0 && activeView !== 'history' && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {getCurrentTracks().map((track) => (
                     <TrackCard
@@ -345,7 +434,7 @@ const Dashboard = () => {
               )}
               
               {/* Empty State */}
-              {!loading && !error && getCurrentTracks().length === 0 && (
+              {!loading && !error && getCurrentTracks().length === 0 && activeView !== 'history' && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Music className="h-16 w-16 text-white/30" />
                   <h3 className="mt-6 text-xl font-semibold">

@@ -30,3 +30,11 @@ export interface ApiResponse {
     }>;
   };
 }
+
+export interface MoodHistory {
+  id: string;
+  mood: MoodCategory;
+  date: string;
+  time: string;
+  tracks: Track[];
+}
