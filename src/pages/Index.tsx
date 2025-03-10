@@ -1,5 +1,6 @@
 
 import { Link } from "react-router-dom";
+import { Music } from "lucide-react";
 import Button from "@/components/Button";
 import PageTransition from "@/components/PageTransition";
 
@@ -9,8 +10,11 @@ const Index = () => {
       <PageTransition>
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-4xl font-semibold text-white mb-4">Welcome</h1>
-            <p className="text-white/90">Please choose an option to continue</p>
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm mb-6">
+              <Music className="h-10 w-10 text-white" />
+            </div>
+            <h1 className="text-4xl font-semibold text-white mb-4">MoodTunes</h1>
+            <p className="text-white/90">Discover music based on your mood</p>
           </div>
 
           <div className="space-y-4">
