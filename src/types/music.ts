@@ -5,6 +5,7 @@ export interface Track {
   artist: string;
   albumArt: string;
   preview: string | null;
+  spotifyUri?: string; // New field for Spotify
   mood?: string;
 }
 
@@ -12,6 +13,7 @@ export type MoodCategory = 'happy' | 'sad' | 'energetic' | 'romantic' | 'calm' |
 
 export interface ApiResponse {
   tracks?: {
+    items?: Array<any>; // Spotify response structure
     hits?: Array<{
       track: {
         key: string;
@@ -37,4 +39,10 @@ export interface MoodHistory {
   date: string;
   time: string;
   tracks: Track[];
+}
+
+export interface SpotifyTokens {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
 }

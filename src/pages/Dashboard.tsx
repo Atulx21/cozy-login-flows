@@ -1,16 +1,15 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Music, Search, Home, History, LogOut } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
 import { useToast } from "@/hooks/use-toast";
-import EmotionSelector, { getMoodGenre } from '@/components/EmotionSelector';
+import EmotionSelector from '@/components/EmotionSelector';
 import SearchBar from '@/components/SearchBar';
 import MusicPlayer from '@/components/MusicPlayer';
 import TrackCard from '@/components/TrackCard';
 import MoodHistoryItem from '@/components/MoodHistoryItem';
 import { Track, MoodCategory, MoodHistory } from '@/types/music';
-import { searchMusic, getMoodBasedRecommendations, fetchTopCharts } from '@/services/musicApi';
+import { searchMusic, getMoodBasedRecommendations, fetchTopCharts, initiateSpotifyLogin } from '@/services/musicApi';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -76,6 +75,29 @@ const Dashboard = () => {
       loadMoodBasedMusic(selectedMood);
     }
   }, [selectedMood]);
+
+  // Handle Spotify login
+  useEffect(() => {
+    // Check if user has a spotify token
+    const spotifyToken = localStorage.getItem('spotify_access_token');
+    const tokenExpiry = localStorage.getItem('spotify_token_expiry');
+    
+    // If token exists but expired, we should show a "reconnect" prompt
+    if (spotifyToken && tokenExpiry && Number(tokenExpiry) < Date.now()) {
+      toast({
+        title: "Spotify Session Expired",
+        description: "Please reconnect your Spotify account for the best experience.",
+        action: (
+          <button 
+            onClick={() => initiateSpotifyLogin()}
+            className="rounded bg-green-600 px-3 py-1 text-sm font-medium text-white"
+          >
+            Reconnect
+          </button>
+        )
+      });
+    }
+  }, [toast]);
 
   const loadMoodBasedMusic = async (mood: MoodCategory) => {
     setLoading(true);
