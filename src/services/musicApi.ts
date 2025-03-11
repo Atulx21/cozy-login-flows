@@ -1,7 +1,7 @@
 
 import { ApiResponse, Track, MoodCategory } from '@/types/music';
 
-const SHAZAM_API_KEY = 'acdfdaf683mshb9e4695beda4392p1840fcjsn7bab59b866f4';
+const SHAZAM_API_KEY = '9cfda575b8mshaa99504ff179abep119d1ajsncdc3e55f1047';
 const SHAZAM_API_HOST = 'shazam.p.rapidapi.com';
 
 const options = {
@@ -12,15 +12,17 @@ const options = {
   }
 };
 
+
 export const searchMusic = async (term: string, limit: number = 10): Promise<Track[]> => {
   try {
     const url = `https://shazam.p.rapidapi.com/search?term=${encodeURIComponent(term)}&locale=en-US&offset=0&limit=${limit}`;
-    
+    // const url = `https://shazam-api6.p.rapidapi.com/shazam/search_track/?query=${encodeURIComponent(term)}&limit=${limit}`;
+
     const response = await fetch(url, options);
     if (!response.ok) throw new Error('API request failed');
     
     const data: ApiResponse = await response.json();
-    
+    console.log(data);
     if (!data.tracks?.hits?.length) {
       return [];
     }
