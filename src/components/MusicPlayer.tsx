@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, Heart } from 'lucide-react';
 import { Track } from '@/types/music';
+import { useToast } from "@/hooks/use-toast";
 
 interface MusicPlayerProps {
   currentTrack: Track | null;
@@ -29,6 +30,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   const [volume, setVolume] = useState(0.7);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressRef = useRef<HTMLInputElement | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!audioRef.current) return;
@@ -57,24 +59,48 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       if (isPlaying) {
         audioRef.current.play().catch((error) => {
           console.error('Playback error:', error);
+          onTogglePlay(); // Stop playing if there's an error
+          
+          toast({
+            variant: "destructive", 
+            title: "Playback Error",
+            description: "Could not play the selected track. Please try another."
+          });
         });
       } else {
         audioRef.current.pause();
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, onTogglePlay, toast]);
 
   useEffect(() => {
     if (audioRef.current && currentTrack) {
+      // Check if preview is available
+      if (!currentTrack.preview) {
+        toast({
+          variant: "destructive",
+          title: "No Preview Available",
+          description: "This track doesn't have a preview. Try opening it in Spotify."
+        });
+        return;
+      }
+      
       audioRef.current.src = currentTrack.preview || '';
       audioRef.current.volume = volume;
       if (isPlaying) {
         audioRef.current.play().catch((error) => {
           console.error('Playback error:', error);
+          onTogglePlay(); // Stop playing if there's an error
+          
+          toast({
+            variant: "destructive",
+            title: "Playback Error",
+            description: "Could not play the selected track. Please try another."
+          });
         });
       }
     }
-  }, [currentTrack, volume]);
+  }, [currentTrack, volume, isPlaying, onTogglePlay, toast]);
 
   const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!audioRef.current) return;
@@ -97,6 +123,12 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+  
+  const openInSpotify = () => {
+    if (currentTrack?.spotifyUri) {
+      window.open(`https://open.spotify.com/track/${currentTrack.id}`, '_blank');
+    }
   };
 
   if (!currentTrack) return null;
@@ -180,6 +212,18 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
           />
         </div>
       </div>
+      
+      {!currentTrack.preview && (
+        <div className="mt-2 text-center">
+          <p className="text-xs text-yellow-400">No preview available for this track</p>
+          <button 
+            onClick={openInSpotify}
+            className="mt-1 text-xs text-blue-400 hover:underline"
+          >
+            Open in Spotify
+          </button>
+        </div>
+      )}
     </div>
   );
 };

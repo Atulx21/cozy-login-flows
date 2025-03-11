@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Music, Search, Home, History, LogOut } from 'lucide-react';
@@ -194,16 +195,25 @@ const Dashboard = () => {
     const list = trackList || (activeView === 'liked' ? likedSongs : activeView === 'search' ? searchResults : tracks);
     const trackIndex = list.findIndex(t => t.id === track.id);
     
+    setCurrentTrackIndex(trackIndex);
+    setCurrentTrack(track);
+    
     if (track.preview) {
-      setCurrentTrackIndex(trackIndex);
-      setCurrentTrack(track);
       setIsPlaying(true);
     } else {
-      setError('No preview available for this track');
+      setIsPlaying(false); // Don't try to play tracks without previews
       toast({
         variant: "destructive",
-        title: "Playback Error",
-        description: "No preview available for this track.",
+        title: "No Preview Available",
+        description: "This track doesn't have a preview available. Open in Spotify to listen.",
+        action: (
+          <button 
+            onClick={() => window.open(`https://open.spotify.com/track/${track.id}`, '_blank')}
+            className="rounded bg-green-500 px-3 py-1 text-sm font-medium text-white"
+          >
+            Open
+          </button>
+        )
       });
     }
   };
@@ -211,7 +221,20 @@ const Dashboard = () => {
   const playPreviousTrack = () => {
     const currentList = activeView === 'liked' ? likedSongs : activeView === 'search' ? searchResults : tracks;
     if (currentList.length === 0 || currentTrackIndex <= 0) return;
-    const newIndex = currentTrackIndex - 1;
+    
+    let newIndex = currentTrackIndex - 1;
+    // Skip tracks without previews when going backwards
+    while (newIndex >= 0 && !currentList[newIndex].preview) {
+      newIndex--;
+      if (newIndex < 0) {
+        toast({
+          title: "No Playable Tracks",
+          description: "No previous tracks with previews available."
+        });
+        return;
+      }
+    }
+    
     setCurrentTrackIndex(newIndex);
     setCurrentTrack(currentList[newIndex]);
     setIsPlaying(true);
@@ -220,13 +243,42 @@ const Dashboard = () => {
   const playNextTrack = () => {
     const currentList = activeView === 'liked' ? likedSongs : activeView === 'search' ? searchResults : tracks;
     if (currentList.length === 0 || currentTrackIndex >= currentList.length - 1) return;
-    const newIndex = currentTrackIndex + 1;
+    
+    let newIndex = currentTrackIndex + 1;
+    // Skip tracks without previews when going forward
+    while (newIndex < currentList.length && !currentList[newIndex].preview) {
+      newIndex++;
+      if (newIndex >= currentList.length) {
+        toast({
+          title: "End of Playlist",
+          description: "No more tracks with previews available."
+        });
+        return;
+      }
+    }
+    
     setCurrentTrackIndex(newIndex);
     setCurrentTrack(currentList[newIndex]);
     setIsPlaying(true);
   };
 
   const togglePlayPause = () => {
+    if (currentTrack && !currentTrack.preview) {
+      toast({
+        variant: "warning",
+        title: "No Preview Available",
+        description: "This track doesn't have a preview. Open in Spotify to listen.",
+        action: (
+          <button 
+            onClick={() => window.open(`https://open.spotify.com/track/${currentTrack.id}`, '_blank')}
+            className="rounded bg-green-500 px-3 py-1 text-sm font-medium text-white"
+          >
+            Open
+          </button>
+        )
+      });
+      return;
+    }
     setIsPlaying(prev => !prev);
   };
 
