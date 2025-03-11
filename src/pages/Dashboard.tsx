@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Music, Search, Home, History, LogOut } from 'lucide-react';
@@ -265,7 +264,7 @@ const Dashboard = () => {
   const togglePlayPause = () => {
     if (currentTrack && !currentTrack.preview) {
       toast({
-        variant: "warning",
+        variant: "destructive", // Changed from "warning" to "destructive"
         title: "No Preview Available",
         description: "This track doesn't have a preview. Open in Spotify to listen.",
         action: (
