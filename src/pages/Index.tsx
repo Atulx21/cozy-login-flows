@@ -73,11 +73,12 @@ const Index = () => {
   };
 
   const handleContinue = () => {
-    if (selectedMood) {
-      navigate('/dashboard', { state: { mood: selectedMood } });
-    } else {
-      navigate('/dashboard');
-    }
+    // if (selectedMood) {
+    //   navigate('/dashboard', { state: { mood: selectedMood } });
+    // } else {
+    //   navigate('/dashboard');
+    // }
+    navigate('/login')
   };
 
   const handleGetStarted = () => {

@@ -217,7 +217,7 @@ const Dashboard = () => {
       description: "You have been successfully signed out.",
     });
   
-    navigate('/');
+    navigate('/login');
   };
   
 
