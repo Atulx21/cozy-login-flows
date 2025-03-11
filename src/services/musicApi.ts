@@ -1,5 +1,5 @@
 
-import { ApiResponse, Track, MoodCategory } from '@/types/music';
+import { ApiResponse, Track, MoodCategory, SpotifyTokens } from '@/types/music';
 
 const SPOTIFY_CLIENT_ID = '1fc0f404036c4b22b3f2b4bb82c3376c';
 const SPOTIFY_CLIENT_SECRET = 'f4d5b0485bc6467e9d86b9148b9ce393';
@@ -73,21 +73,21 @@ export const searchMusic = async (term: string, limit: number = 10): Promise<Tra
   }
 };
 
-// Get mood based recommendations
+// Get mood based recommendations using Spotify's recommendation engine
 export const getMoodBasedRecommendations = async (mood: MoodCategory): Promise<Track[]> => {
   // Map moods to Spotify parameters
   const moodMapping: Record<string, any> = {
-    happy: { seed_genres: 'pop,happy', target_energy: 0.8, target_valence: 0.8 },
-    sad: { seed_genres: 'sad,piano', target_energy: 0.3, target_valence: 0.2 },
-    energetic: { seed_genres: 'electronic,dance', target_energy: 0.9, target_tempo: 150 },
-    romantic: { seed_genres: 'romance,r-n-b', target_valence: 0.6, target_acousticness: 0.6 },
-    calm: { seed_genres: 'ambient,chill', target_energy: 0.3, target_acousticness: 0.8 },
+    happy: { seed_genres: 'pop,dance', target_valence: 0.8, target_energy: 0.8 },
+    sad: { seed_genres: 'acoustic,piano', target_valence: 0.2, target_energy: 0.3 },
+    energetic: { seed_genres: 'edm,dance', target_energy: 0.9, target_tempo: 150 },
+    romantic: { seed_genres: 'jazz,r-n-b', target_valence: 0.6, target_acousticness: 0.6 },
+    calm: { seed_genres: 'ambient,classical', target_energy: 0.3, target_acousticness: 0.8 },
     melancholy: { seed_genres: 'indie,folk', target_valence: 0.3, target_acousticness: 0.7 },
     night: { seed_genres: 'electronic,chill', target_energy: 0.5, target_popularity: 70 },
     discovery: { seed_genres: 'pop,indie,alternative', target_popularity: 60 }
   };
   
-  const params = moodMapping[mood] || { seed_genres: 'pop' };
+  const params = moodMapping[mood];
   
   try {
     const token = await getClientCredentialsToken();
@@ -106,7 +106,10 @@ export const getMoodBasedRecommendations = async (mood: MoodCategory): Promise<T
       }
     });
     
-    if (!response.ok) throw new Error('Spotify API recommendations request failed');
+    if (!response.ok) {
+      console.error('Spotify API error:', await response.text());
+      throw new Error('Spotify API recommendations request failed');
+    }
     
     const data = await response.json();
     
@@ -114,7 +117,6 @@ export const getMoodBasedRecommendations = async (mood: MoodCategory): Promise<T
       return [];
     }
     
-    // Tag tracks with the mood
     return data.tracks.map((item: any) => ({
       id: item.id,
       title: item.name,
@@ -132,10 +134,9 @@ export const getMoodBasedRecommendations = async (mood: MoodCategory): Promise<T
 
 export const fetchTopCharts = async (): Promise<Track[]> => {
   try {
-    // Using playlist endpoint to get top hits
     const token = await getClientCredentialsToken();
-    // This is Spotify's "Today's Top Hits" playlist ID
-    const playlistId = '37i9dQZF1DXcBWIGoYBM5M';
+    // Using Spotify's Global Top 50 playlist
+    const playlistId = '37i9dQZEVXbMDoHDwVN2tF';
     const url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=10`;
     
     const response = await fetch(url, {
@@ -166,7 +167,7 @@ export const fetchTopCharts = async (): Promise<Track[]> => {
   }
 };
 
-// Handle OAuth login if needed
+// Spotify OAuth login
 export const initiateSpotifyLogin = () => {
   const scope = 'user-read-private user-read-email user-top-read';
   const authUrl = new URL('https://accounts.spotify.com/authorize');
@@ -180,7 +181,7 @@ export const initiateSpotifyLogin = () => {
 };
 
 // Handle callback after OAuth login
-export const handleAuthCallback = async (code: string): Promise<any> => {
+export const handleAuthCallback = async (code: string): Promise<SpotifyTokens> => {
   try {
     const response = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
