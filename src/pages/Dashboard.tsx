@@ -303,6 +303,11 @@ const Dashboard = () => {
     }
   };
 
+  // Handle navigation to history page
+  const navigateToHistory = () => {
+    navigate('/history');
+  };
+
   return (
     <PageTransition>
       <div className="flex h-screen w-full flex-col bg-[#0f0f19] text-white">
@@ -329,8 +334,8 @@ const Dashboard = () => {
               <span>Explore</span>
             </button>
             <button 
-              onClick={() => setActiveView('history')}
-              className={`flex items-center gap-2 px-2 py-1 ${activeView === 'history' ? 'text-blue-500' : 'text-white/80 hover:text-white'}`}
+              onClick={navigateToHistory}
+              className="flex items-center gap-2 px-2 py-1 text-white/80 hover:text-white"
             >
               <History size={18} />
               <span>History</span>
@@ -365,8 +370,8 @@ const Dashboard = () => {
                 <span className="mt-1 text-xs">Explore</span>
               </button>
               <button 
-                onClick={() => setActiveView('history')}
-                className={`flex flex-col items-center p-2 ${activeView === 'history' ? 'text-blue-500' : 'text-white/70'}`}
+                onClick={navigateToHistory}
+                className="flex flex-col items-center p-2 text-white/70"
               >
                 <History size={20} />
                 <span className="mt-1 text-xs">History</span>
@@ -444,14 +449,12 @@ const Dashboard = () => {
                         Track your mood and music recommendation history.
                       </p>
                     </div>
-                    {moodHistory.length > 0 && (
-                      <button 
-                        onClick={clearHistory}
-                        className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium hover:bg-white/20"
-                      >
-                        Clear history
-                      </button>
-                    )}
+                    <button 
+                      onClick={navigateToHistory}
+                      className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-700"
+                    >
+                      View Full History
+                    </button>
                   </div>
                 )}
               </div>

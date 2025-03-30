@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Calendar, Clock } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, Clock, Trash2 } from 'lucide-react';
 import { MoodHistory } from '@/types/music';
 import TrackCard from './TrackCard';
 
@@ -11,6 +11,7 @@ interface MoodHistoryItemProps {
   onPlay: (trackId: string) => void;
   onToggleLike: (trackId: string) => void;
   isLiked: (trackId: string) => boolean;
+  onDelete?: () => void;
 }
 
 const MoodHistoryItem: React.FC<MoodHistoryItemProps> = ({
@@ -19,7 +20,8 @@ const MoodHistoryItem: React.FC<MoodHistoryItemProps> = ({
   currentTrackId,
   onPlay,
   onToggleLike,
-  isLiked
+  isLiked,
+  onDelete
 }) => {
   const [expanded, setExpanded] = useState(false);
   
@@ -58,9 +60,22 @@ const MoodHistoryItem: React.FC<MoodHistoryItemProps> = ({
           </div>
         </div>
         
-        <button className="rounded-full p-1 hover:bg-white/10">
-          {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-        </button>
+        <div className="flex items-center gap-2">
+          {onDelete && (
+            <button 
+              className="rounded-full p-2 text-red-400 hover:bg-red-500/20 hover:text-red-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
+          <button className="rounded-full p-1 hover:bg-white/10">
+            {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </button>
+        </div>
       </div>
       
       {expanded && (
